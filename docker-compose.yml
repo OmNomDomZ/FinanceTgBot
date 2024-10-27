@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: finance_bot
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  migrate:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://user:password@db:5432/finance_bot?sslmode=disable
+    command: sh -c "until pg_isready -h db -p 5432; do sleep 1; done && goose -dir internal/db/migrations postgres \"$DATABASE_URL\" up"
+
+  bot:
+    build: .
+    depends_on:
+      - migrate
+    environment:
+      DATABASE_URL: postgres://user:password@db:5432/finance_bot?sslmode=disable
+    command: ./bot
+
+volumes:
+  dbdata:
